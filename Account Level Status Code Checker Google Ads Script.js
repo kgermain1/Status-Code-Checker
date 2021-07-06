@@ -3,7 +3,7 @@
 
 //Enter one or multiple email addresses here
 //format ['xxx@xxx.com'] or ['xxx@xxx.com', 'yyy@yyy.com']
-var recipients = ['kevin.germain@zenithmedia.com'];
+var recipients = [''];
 
 //DO NOT CHANGE ANYTHING BELOW THIS LINE
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
