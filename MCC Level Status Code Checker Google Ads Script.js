@@ -37,10 +37,10 @@ function main () {
     Logger.log('Connecting to Google Sheet');
     var spreadsheetURL = createGoogleSheet(extraParams);
 
-    //Logger.log('Sending Email...');
-    //sendEmail(spreadsheetURL, extraParams);
+    Logger.log('Sending Email...');
+    sendEmail(spreadsheetURL, extraParams);
 
-    //Logger.log('Email Sent');
+    Logger.log('Email Sent');
   }
 }
 
