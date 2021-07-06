@@ -28,7 +28,7 @@ At the top of each script are 1 or 2 editable parameters depending on the script
 - recipient: input one or multiple email addresses here. Those addresses will receive a notification every time the script runs and find a non-200 status code in a Google Ads account. They are also used to share access to the accompanying Google Sheet
 - ACCOUNTS: MCC script only, add the Google Ads accounts that you would like the script to audit.
 
-# How does it work?:
+# How does it work?
 
 The script retrieves pages using the Final URL Report from the Google Ads API and checks status codes for each of them. If it finds non-200 status codes, it will put it in a Google Sheet.
 
