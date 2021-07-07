@@ -25,8 +25,10 @@ MCC Level
 
 At the top of each script are 1 or 2 editable parameters depending on the script (Account or MCC level): 
 
-- recipient: input one or multiple email addresses here. Those addresses will receive a notification every time the script runs and find a non-200 status code in a Google Ads account. They are also used to share access to the accompanying Google Sheet
+- RECIPIENTS: input one or multiple email addresses here. Those addresses will receive a notification every time the script runs and find a non-200 status code in a Google Ads account. They are also used to share access to the accompanying Google Sheet
 - ACCOUNTS: MCC script only, add the Google Ads accounts that you would like the script to audit.
+- SHEET_NAME: MCC script only, input the name you would like the spreadsheet to have.
+- SEND_EMAIL: MCC script only, 'YES' to send an email to all recipients to warn you about non-200 pages or 'NO' to disable that function.
 
 # How does it work?
 
