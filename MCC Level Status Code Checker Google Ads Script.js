@@ -3,11 +3,17 @@
 
 //Enter one or multiple email addresses here
 //format ['xxx@xxx.com'] or ['xxx@xxx.com', 'yyy@yyy.com']
-var recipients = [''];
+var RECIPIENTS = [''];
 
 //Enter one or multiple Google Ads accounts to be checked by the script here
 //format ['XXX-XXX-XXXX'] or ['XXX-XXX-XXXX', 'YYY-YYY-YYYY']
 var ACCOUNTS = ['123-456-7890'];
+
+//Enter the name you would like the spreadsheet to have here
+var SHEET_NAME = 'Name Status Code Report';
+
+//'YES' to send an email to all recipients to warn you about non-200 pages or 'NO' to disable that function
+var SEND_EMAIL = 'NO';
 
 //DO NOT CHANGE ANYTHING BELOW THIS LINE
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,10 +43,12 @@ function main () {
     Logger.log('Connecting to Google Sheet');
     var spreadsheetURL = createGoogleSheet(extraParams);
 
-    Logger.log('Sending Email...');
-    sendEmail(spreadsheetURL, extraParams);
+    if (SEND_EMAIL === 'YES'){
+      Logger.log('Sending Email...');
+      sendEmail(spreadsheetURL, extraParams);
 
-    Logger.log('Email Sent');
+      Logger.log('Email Sent');
+    }
   }
 }
 
@@ -118,7 +126,7 @@ function getExtraParameters(filteredCodes){
 //RUNS 4
 function createGoogleSheet(extraParams){
   var accountName = AdsApp.currentAccount().getName();
-  var spreadSheetName = accountName + " Status Code Report";
+  var spreadSheetName = SHEET_NAME;
   var sheetarray = [['URL', 'Campaign', 'Click Type','Status Code', 'Redirected To']];
   var numberRows = extraParams.length + sheetarray.length;
   
@@ -126,13 +134,19 @@ function createGoogleSheet(extraParams){
   try {
     var file = DriveApp.getFilesByName(spreadSheetName);
     var spreadSheet = SpreadsheetApp.open(file.next());
-    var sheet = spreadSheet.getActiveSheet();
+    var sheet = spreadSheet.getSheetByName(accountName);
+      
+    if (sheet === null) {
+      var sheet = spreadSheet.insertSheet(accountName);
+      Logger.log("New Sheet Added")
+    }
     var lastColumn = (sheet.getMaxColumns() - 1);
     var lastRow = (sheet.getMaxRows() - 1);
-    
+
     sheet.deleteRows(1, lastRow);
     sheet.deleteColumns(1, lastColumn);
   }
+  
   //If the spreadsheet does not exist
   catch(err) {
     Logger.log("Spreadsheet does not exist, creating it...")
@@ -140,16 +154,16 @@ function createGoogleSheet(extraParams){
 
     //Share spreadsheet with relevant recipients
     var fileId = spreadSheet.getId();
-    var recipientList = recipients.length;
+    var recipientList = RECIPIENTS.length;
     for (var i = 0; i < recipientList; i++) {
-      var recipient = recipients[i];
+      var recipient = RECIPIENTS[i];
       DriveApp.getFileById(fileId).addEditor(recipient);
     }
+    
+    var sheet = spreadSheet.getActiveSheet().setName(accountName);
   }
 
   var spreadsheetUrl = spreadSheet.getUrl();
-  var spreadsheet = SpreadsheetApp.openByUrl(spreadsheetUrl);
-  var ss = spreadSheet.getActiveSheet();
   
   //Updates the Google Sheet
   var arrayLength = extraParams.length;
@@ -162,7 +176,8 @@ function createGoogleSheet(extraParams){
     var redirectedURL = extraParams[i].redirectedURL;
     sheetarray.push([URL, campaign, clickType, statusCode, redirectedURL]);
   }
-  ss.getRange(1, 1, sheetarray.length, sheetarray[0].length).setValues(sheetarray);
+
+  sheet.getRange(1, 1, sheetarray.length, sheetarray[0].length).setValues(sheetarray);
   Logger.log(spreadsheetUrl)
   return spreadsheetUrl;
 }
@@ -176,9 +191,9 @@ function sendEmail(spreadsheetURL, extraParams) {
     var subjectLine = accountName + ": " + numberRows + " Destination URL Changes Required";
     var emailBody = numberRows +' URLs in your account need changes.\n \nHere is a link to a spreadsheet for you to check out: ' + spreadsheetURL;
 
-    var recipientList = recipients.length;
+    var recipientList = RECIPIENTS.length;
     for (var i = 0; i < recipientList; i++) {
-      var recipient = recipients[i];
+      var recipient = RECIPIENTS[i];
       MailApp.sendEmail(recipient, subjectLine, emailBody);
     }
   }
