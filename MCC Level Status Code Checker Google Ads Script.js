@@ -143,8 +143,13 @@ function createGoogleSheet(extraParams){
     var lastColumn = (sheet.getMaxColumns() - 1);
     var lastRow = (sheet.getMaxRows() - 1);
 
-    sheet.deleteRows(1, lastRow);
-    sheet.deleteColumns(1, lastColumn);
+    if(lastColumn > 0){
+      sheet.deleteColumns(1, lastColumn);
+    }
+    
+    if(lastRow > 0){
+      sheet.deleteRows(1, lastRow);
+    } 
   }
   
   //If the spreadsheet does not exist
