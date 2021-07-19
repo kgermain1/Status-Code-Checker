@@ -55,7 +55,7 @@ function main () {
 //RUNS 1
 function getURLList(){
   var URLList = [];
-  var query = "SELECT EffectiveFinalUrl FROM FINAL_URL_REPORT";
+  var query = "SELECT EffectiveFinalUrl FROM FINAL_URL_REPORT WHERE CampaignStatus = ENABLED DURING LAST_30_DAYS";
   var rows = AdsApp.report(query).rows();
 
   while (rows.hasNext()) {
