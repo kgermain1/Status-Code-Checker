@@ -19,7 +19,9 @@ var SEND_EMAIL = 'NO';
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function main () {
+  Logger.log("Getting Accounts")
   var childAccounts = AdsManagerApp.accounts().withIds(ACCOUNTS).get();
+  Logger.log("Accounts retrieved")
   
   while (childAccounts.hasNext()){
     
@@ -37,11 +39,8 @@ function main () {
     Logger.log('Filtering status codes');
     var filteredCodes = filterStatusCodes(statusCodes);
 
-    Logger.log('Getting additional parameters');
-    var extraParams = getExtraParameters(filteredCodes);
-
     Logger.log('Connecting to Google Sheet');
-    var spreadsheetURL = createGoogleSheet(extraParams);
+    var spreadsheetURL = createGoogleSheet(filteredCodes);
 
     if (SEND_EMAIL === 'YES'){
       Logger.log('Sending Email...');
@@ -55,12 +54,14 @@ function main () {
 //RUNS 1
 function getURLList(){
   var URLList = [];
-  var query = "SELECT EffectiveFinalUrl FROM FINAL_URL_REPORT WHERE CampaignStatus = ENABLED DURING LAST_30_DAYS";
+  var query = "SELECT EffectiveFinalUrl, CampaignName, ClickType FROM FINAL_URL_REPORT WHERE CampaignStatus = ENABLED DURING LAST_30_DAYS";
+
   var rows = AdsApp.report(query).rows();
 
   while (rows.hasNext()) {
     var row = rows.next();
-    URLList.push(row.EffectiveFinalUrl);
+    var URLObject = {URL: row.EffectiveFinalUrl, campaignName: row.CampaignName, clickType: row.ClickType}
+    URLList.push(URLObject);
   }
   return URLList;
 }
@@ -68,20 +69,27 @@ function getURLList(){
 //RUNS 2
 function getStatusCodes(URLList){
   var statusCodes = [];
-  var HTTP_OPTIONS = {muteHttpExceptions:true, 'followRedirects':false};
-  var arrayLength = URLList.length;
+  var URLListLength = URLList.length;
   
-  for (var i = 0; i < arrayLength; i++) {
-    var url = URLList[i];
-    var response = UrlFetchApp.fetch(url, HTTP_OPTIONS);
-    var statusCode = response.getResponseCode();
+  //Creates the JSON to send to URLFetchApp
+  var requests = [];  
+  for (var i = 0; i < URLListLength; i++) {
+    var requestObject = {'url': URLList[i].URL, 'muteHttpExceptions': true, 'followRedirects':false};
+    requests.push(requestObject);
+  }
+  
+  var response = UrlFetchApp.fetchAll(requests);
+  
+  for (var i = 0; i < URLListLength; i++) {
+    var url = requests[i].url;
+    var statusCode = response[i].getResponseCode();
     if (statusCode === 301){
-      var redirectedURL = response.getHeaders().Location;
-      var statusCodeObject = {URL: url, statusCode: statusCode, redirectedURL: redirectedURL};
+      var redirectedURL = response[i].getHeaders().Location;
+      var statusCodeObject = {URL: url, campaignName: URLList[i].campaignName, clickType:URLList[i].clickType, statusCode: statusCode, redirectedURL: redirectedURL};
       statusCodes.push(statusCodeObject);
     }
     else {
-      var statusCodeObject = {URL: url, statusCode: statusCode, redirectedURL: ""};
+      var statusCodeObject = {URL: url, campaignName: URLList[i].campaignName, clickType:URLList[i].clickType, statusCode: statusCode, redirectedURL: ""};
       statusCodes.push(statusCodeObject);
     }
   }
@@ -104,31 +112,12 @@ function filterStatusCodes(statusCodes){
   return filteredCodes;
 }
 
-//RUNS 3.1
-function getExtraParameters(filteredCodes){
-  var extraParams = [];
-  var arrayLength = filteredCodes.length;
-  
-  for (var i = 0; i < arrayLength; i++) {
-    var URL = filteredCodes[i].URL;
-    var query = "SELECT EffectiveFinalUrl, CampaignName, ClickType FROM FINAL_URL_REPORT WHERE CampaignStatus = ENABLED AND EffectiveFinalUrl = '" + URL + "' DURING LAST_30_DAYS";
-    var rows = AdsApp.report(query).rows();
-
-    while (rows.hasNext()) {
-      var row = rows.next();
-      var URLObject = {URL: row.EffectiveFinalUrl, campaignName: row.CampaignName, clickType: row.ClickType, statusCode: filteredCodes[i].statusCode, redirectedURL: filteredCodes[i].redirectedURL};
-      extraParams.push(URLObject);
-    }
-  }
-  return extraParams;
-}
-
 //RUNS 4
-function createGoogleSheet(extraParams){
+function createGoogleSheet(filteredCodes){
   var accountName = AdsApp.currentAccount().getName();
   var spreadSheetName = SHEET_NAME;
   var sheetarray = [['URL', 'Campaign', 'Click Type','Status Code', 'Redirected To']];
-  var numberRows = extraParams.length + sheetarray.length;
+  var numberRows = filteredCodes.length + sheetarray.length;
   
   //Checks if spreadsheet exists, if it does, cleans and formats it the right way
   try {
@@ -143,13 +132,8 @@ function createGoogleSheet(extraParams){
     var lastColumn = (sheet.getMaxColumns() - 1);
     var lastRow = (sheet.getMaxRows() - 1);
 
-    if(lastColumn > 0){
-      sheet.deleteColumns(1, lastColumn);
-    }
-    
-    if(lastRow > 0){
-      sheet.deleteRows(1, lastRow);
-    } 
+    sheet.deleteRows(1, lastRow);
+    sheet.deleteColumns(1, lastColumn);
   }
   
   //If the spreadsheet does not exist
@@ -171,14 +155,14 @@ function createGoogleSheet(extraParams){
   var spreadsheetUrl = spreadSheet.getUrl();
   
   //Updates the Google Sheet
-  var arrayLength = extraParams.length;
+  var arrayLength = filteredCodes.length;
   
   for (var i = 0; i < arrayLength; i++) {
-    var URL = extraParams[i].URL;
-    var campaign = extraParams[i].campaignName;
-    var clickType = extraParams[i].clickType;
-    var statusCode = extraParams[i].statusCode;
-    var redirectedURL = extraParams[i].redirectedURL;
+    var URL = filteredCodes[i].URL;
+    var campaign = filteredCodes[i].campaignName;
+    var clickType = filteredCodes[i].clickType;
+    var statusCode = filteredCodes[i].statusCode;
+    var redirectedURL = filteredCodes[i].redirectedURL;
     sheetarray.push([URL, campaign, clickType, statusCode, redirectedURL]);
   }
 
@@ -188,9 +172,9 @@ function createGoogleSheet(extraParams){
 }
 
 //RUNS 5
-function sendEmail(spreadsheetURL, extraParams) {
+function sendEmail(spreadsheetURL, filteredCodes) {
   var accountName = AdsApp.currentAccount().getName();
-  var numberRows = extraParams.length;
+  var numberRows = filteredCodes.length;
   //Only sends emails if there are non-200 status codes
   if (numberRows > 0){
     var subjectLine = accountName + ": " + numberRows + " Destination URL Changes Required";
