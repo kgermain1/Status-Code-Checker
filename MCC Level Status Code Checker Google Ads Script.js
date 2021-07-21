@@ -44,7 +44,7 @@ function main () {
 
     if (SEND_EMAIL === 'YES'){
       Logger.log('Sending Email...');
-      sendEmail(spreadsheetURL, extraParams);
+      sendEmail(spreadsheetURL, filteredCodes);
 
       Logger.log('Email Sent');
     }
